@@ -20,11 +20,9 @@ VectorCreate( ztan )
 VectorSet( ztan, [50e3, 46e3, 34e3, 10e3, 5e3, 2.5e3] )
 nelemGet( nelem, ztan )
 MatrixSetConstant( sensor_pos, nelem, 1, 600e3 )
-VectorSet( rte_pos2, [] ) 
+VectorSet( rte_pos2, [] )
 
 IndexCreate( ilast )
-nrowsGet( ilast, sensor_pos )
-IndexStepDown( ilast, ilast )
 
 
 Copy( ppath_agenda, ppath_agenda__FollowSensorLosPath )
@@ -50,67 +48,38 @@ NumericCreate( tanlat2 )
 VectorCreate( tp2 )
 NumericCreate( diff )
 StringCreate( infostring )
+Tensor3Create( vmr_field3 )
+MatrixCreate( vmr_field2 )
+MatrixCreate( t_field2 )
+VectorCreate( t_field1 )
+StringCreate( outfile )
+StringCreate( str )
 AgendaSet( forloop_agenda ){
-  VectorExtractFromMatrix( rte_pos, sensor_pos, forloop_index, "row" )
-  VectorExtractFromMatrix( rte_los, sensor_los, forloop_index, "row" )
+  NumericSet(refr_index_air, 0)
+  NumericSet(refr_index_air_group, 0)
 
-  ###
-  # CASE 0-0: geometric path (no refraction)
-  Copy( ppath_step_agenda, ppath_step_agenda__GeometricPath )
-  ppathCalc
-  TangentPointExtract( tan_pos=tp1 )
-  TangentPointPrint( level=tpoutlev )
+  Tensor3ExtractFromTensor4(vmr_field3, vmr_field, forloop_index, "page")
+  MatrixExtractFromTensor3(vmr_field2, vmr_field3, 0, "row")
+  VectorExtractFromMatrix(rtp_vmr, vmr_field2, 0, "column")
 
-  ###
-  # CASE 0-1: refracted path with n==1 (no refraction)
-  Copy( ppath_step_agenda, ppath_step_agenda__RefractedPath )
-  Copy( refr_index_air_agenda, refr_index_air_agenda__NoRefrac )
-  ppathCalc
-  TangentPointExtract( tan_pos=tp2 )
-  TangentPointPrint( level=tpoutlev )
+  MatrixExtractFromTensor3(t_field2, t_field, forloop_index, "page")
+  VectorExtractFromMatrix(t_field1, t_field2, 0, "row")
+  Extract(rtp_temperature, t_field1, 0)
 
-  # Compare geom and n==1 results
-  Extract( tanh1, tp1, 0 )
-  Extract( tanh2, tp2, 0 )
-  Compare( tanh1, tanh2, 1.,
-           "Geometric and n==1 tangent point altitude differ too much." )
-  Extract( tanlat1, tp1, 1 )
-  Extract( tanlat2, tp2, 1 )
-  Compare( tanlat1, tanlat2, 0.04,
-           "Geometric and n==1 tangent point latitude differ too much." )
+  Extract(rtp_pressure, p_grid, forloop_index)
 
-  ###
-  # CASE 1: refracted path with n from MicrowavesEarth
-  Copy( refr_index_air_agenda, refr_index_air_agenda__GasMicrowavesEarth )
-  ppathCalc
-  #WriteXMLIndexed( "ascii", forloop_index, ppath, "thayer" )
-  TangentPointExtract( tan_pos=tp1 )
-  TangentPointPrint( level=tpoutlev )
+  #Print(rtp_pressure, 0)
+  #Print(rtp_temperature, 0)
+  #Print(rtp_vmr, 0)
+  refr_index_airMicrowavesGeneral(refr_index_air, refr_index_air_group,
+              rtp_pressure, rtp_temperature, rtp_vmr, abs_species )
+  #Print(refr_index_air, 0)
 
-  ###
-  # CASE 2: refracted path with n from MicrowavesGeneral
-  Copy( refr_index_air_agenda, refr_index_air_agenda__GasMicrowavesGeneral )
-  ppathCalc
-  #WriteXMLIndexed( "ascii", forloop_index, ppath, "MicrowavesGeneral" )
-  TangentPointExtract( tan_pos=tp2 )
-  TangentPointPrint( level=tpoutlev )
-  
-  # Print diff of MicrowavesEarth and MicrowavesGeneral
-  Extract( tanh1, tp1, 0 )
-  Extract( tanh2, tp2, 0 )
-  NumericScale( tanh2, tanh2, -1 )
-  NumericAdd( diff, tanh1, tanh2 )
-  StringSet( infostring, "Tangent altitude diff of MicrowavesEarth and MicrowavesGeneral [m]: " )
-  Print( infostring, outlev )
-  Print( diff, outlev )
-
-  #Extract( tanlat1, tp1, 1 )
-  #Extract( tanlat2, tp2, 1 )
-  #NumericScale( tanlat2, tanlat2, -1 )
-  #NumericAdd( diff, tanlat1, tanlat2 )
-  #StringSet( infostring, "Tangent latitude diff of MicrowavesEarth and MicrowavesGeneral [deg]: " )
-  #Print( infostring, outlev )
-  #Print( diff, outlev )
+  StringSet(str, "refindexair")
+  Append(str, outfile)
+  WriteXMLIndexed("ascii", forloop_index, refr_index_air, str, 3)
+  #WriteXMLIndexed("ascii", forloop_index, rtp_temperature, outfile, 3)
+  #WriteXMLIndexed("ascii", forloop_index, rtp_pressure, outfile, 3)
 }
 
 
@@ -121,18 +90,47 @@ AgendaSet( forloop_agenda ){
 # Main atmospheric contributors
 #  When comparing effects of planetary composition, we don't want further
 #  confusion by H2O. so we leave it out here.
-#abs_speciesSet( species=["H2O","N2","O2"] )
-abs_speciesSet( species=["N2","O2","CO2"] )
+abs_speciesSet( species=[
+"C2H2",
+"C2H6",
+"CH3Cl",
+"CH4",
+"CO",
+"CO2",
+"COF2",
+"ClO",
+"H2CO",
+"H2O",
+"H2O2",
+"HBr",
+"HCN",
+"HCl",
+"HF",
+"HI",
+"HNO3",
+"HOCl",
+"N2",
+"N2O",
+"NH3",
+"NO",
+"NO2",
+"O2",
+"O3",
+"OH",
+"PH3",
+"SF6",
+"SO2"
+])
 
 refellipsoidEarth( refellipsoid, "Sphere" )
 # convert (geometric) tangent altitudes to zenith angles at observer
 VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
 Matrix1ColFromVector( sensor_los, za )
 
-# Pressure grid rougly matching 0 to 80 km.
-VectorNLogSpace( p_grid, 41, 1000e2, 1 )
+VectorNLogSpace( p_grid, 100, 1100e2, 0.1 )
 
 AtmRawRead( basename = "planets/Earth/Fascod/tropical/tropical" )
+#AtmRawRead( basename = "planets/Earth/Fascod/midlatitude-winter/midlatitude-winter" )
 AtmFieldsCalc
 Extract( z_surface, z_field, 0 )
 
@@ -140,23 +138,42 @@ atmfields_checkedCalc
 atmgeom_checkedCalc
 cloudbox_checkedCalc
 
+nelemGet( ilast, p_grid )
+IndexStepDown( ilast, ilast )
+StringSet(outfile, ".Earth")
+WriteXML("ascii", p_grid, "p_grid.Earth.xml")
+WriteXML("ascii", t_field, "t_field.Earth.xml")
 ForLoop( forloop_agenda, 0, ilast, 1  )
-
-
 #####
 # CASE B: Mars
 #####
 
 # Main atmospheric contributors
-abs_speciesSet( species=["N2","O2","CO2","H2"] )
+abs_speciesSet( species=[
+"CH4",
+"CO",
+"CO2",
+"H2",
+"H2O",
+"H2O2",
+"H2S",
+"HCl",
+"N2",
+"NO2",
+"O",
+"O2",
+"O3",
+"OCS",
+"OH",
+"SO2"
+])
 
 refellipsoidMars( refellipsoid, "Sphere" )
 # convert (geometric) tangent altitudes to zenith angles at observer
 VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
 Matrix1ColFromVector( sensor_los, za )
 
-# Pressure grid rougly matching 0 to 80 km.
-VectorNLogSpace( p_grid, 41, 765, 0.08 )
+VectorNLogSpace( p_grid, 100, 766, 0.1 )
 
 AtmRawRead( basename = "planets/Mars/MPS/Mars.Ls0.day.dust-medium/Mars.Ls0.day.dust-medium.sol-avg/Mars.Ls0.day.dust-medium.sol-avg" )
 AtmFieldsCalc
@@ -166,6 +183,11 @@ atmfields_checkedCalc
 atmgeom_checkedCalc
 cloudbox_checkedCalc
 
+nelemGet( ilast, p_grid )
+IndexStepDown( ilast, ilast )
+StringSet(outfile, ".Mars")
+WriteXML("ascii", p_grid, "p_grid.Mars.xml")
+WriteXML("ascii", t_field, "t_field.Mars.xml")
 ForLoop( forloop_agenda, 0, ilast, 1  )
 
 
@@ -174,15 +196,30 @@ ForLoop( forloop_agenda, 0, ilast, 1  )
 #####
 
 # Main atmospheric contributors
-abs_speciesSet( species=["N2","O2","CO2"] )
+abs_speciesSet( species=[
+"CO",
+"CO2",
+"H2O",
+"H2SO4",
+"HCl",
+"HF",
+"N2",
+"NO",
+"NO2",
+"O",
+"O2",
+"O3",
+"OCS",
+"SO",
+"SO2"
+])
 
 refellipsoidVenus( refellipsoid, "Sphere" )
 # convert (geometric) tangent altitudes to zenith angles at observer
 VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
 Matrix1ColFromVector( sensor_los, za )
 
-# Pressure grid rougly matching 0 to 80 km.
-VectorNLogSpace( p_grid, 41, 9.2e6, 4.9e2 )
+VectorNLogSpace( p_grid, 100, 9.2e6, 0.1 )
 
 AtmRawRead( basename = "planets/Venus/MPS/Venus.vira.day/Venus.vira.day" )
 AtmFieldsCalc( vmr_zeropadding=1 )
@@ -192,6 +229,11 @@ atmfields_checkedCalc( bad_partition_functions_ok = 1 )
 atmgeom_checkedCalc
 cloudbox_checkedCalc
 
+nelemGet( ilast, p_grid )
+IndexStepDown( ilast, ilast )
+StringSet(outfile, ".Venus")
+WriteXML("ascii", p_grid, "p_grid.Venus.xml")
+WriteXML("ascii", t_field, "t_field.Venus.xml")
 ForLoop( forloop_agenda, 0, ilast, 1  )
 
 
@@ -200,7 +242,24 @@ ForLoop( forloop_agenda, 0, ilast, 1  )
 #####
 
 # Main atmospheric contributors
-abs_speciesSet( species=["CO2","H2","He"] )
+#abs_speciesSet( species=["CO2","H2","He"] )
+abs_speciesSet( species=[
+"C2H2",
+"C2H4",
+"C2H6",
+"C3H8",
+"CH4",
+"CO",
+"CO2",
+"H2",
+"H2O",
+"H2S",
+"HCN",
+"He",
+"NH3",
+"PH3"
+])
+
 
 refellipsoidJupiter( refellipsoid, "Sphere" )
 # convert (geometric) tangent altitudes to zenith angles at observer
@@ -208,7 +267,7 @@ VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
 Matrix1ColFromVector( sensor_los, za )
 
 # Pressure grid rougly matching 0 to 80 km.
-VectorNLogSpace( p_grid, 41, 1.0e5, 1.8e3 )
+VectorNLogSpace( p_grid, 100, 1.0e6, 0.1 )
 
 AtmRawRead( basename = "planets/Jupiter/MPS/Jupiter.mean/Jupiter.mean" )
 AtmFieldsCalc( vmr_zeropadding=1 )
@@ -218,6 +277,11 @@ atmfields_checkedCalc( bad_partition_functions_ok = 1 )
 atmgeom_checkedCalc
 cloudbox_checkedCalc
 
+nelemGet( ilast, p_grid )
+IndexStepDown( ilast, ilast )
+StringSet(outfile, ".Jupiter")
+WriteXML("ascii", p_grid, "p_grid.Jupiter.xml")
+WriteXML("ascii", t_field, "t_field.Jupiter.xml")
 ForLoop( forloop_agenda, 0, ilast, 1  )
 
 }

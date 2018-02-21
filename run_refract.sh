@@ -1,9 +1,10 @@
 #!/bin/bash
 
-ARTS=$HOME/Hacking/arts-build/clang-reldebug/src/arts
+ARTS=$HOME/Hacking/arts-build/clang-debug/src/arts
 
-mkdir -p out-refract
+OUTDIR=out-refindex
+mkdir -p $OUTDIR
 $ARTS -I$HOME/Dropbox/Hacking/sat/arts/controlfiles \
     -D$HOME/Dropbox/Hacking/sat/arts-xml-data \
-    -r022 -o out-refract \
-    TestRefractPlanets.arts
+    -r022 -o $OUTDIR \
+    CalcRefraction.arts
