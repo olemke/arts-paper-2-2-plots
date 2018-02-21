@@ -24,7 +24,7 @@ def read_planet_data(planets):
     return refdata
 
 
-def plot_refindex_p(planets, ax=None):
+def plot_refractivity_p(planets, ax=None):
     if ax is None:
         fig, ax = subplots()
 
@@ -71,7 +71,7 @@ def plot_refindex_p(planets, ax=None):
     # ax.legend()
 
 
-def plot_refindex_n(planets, ax=None):
+def plot_refractivity_n(planets, ax=None):
     if ax is None:
         fig, ax = subplots()
 
@@ -127,13 +127,13 @@ planets = (('Earth', 2), ('Mars', 3), ('Venus', 0), ('Jupiter', 1))
 refdata = read_planet_data(planets)
 
 fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
-plot_refindex_n(planets, ax=ax)
+plot_refractivity_n(planets, ax=ax)
 fig.tight_layout(pad=1)
 plt.show()
 fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.pdf'), dpi=300)
 
 fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
-plot_refindex_p(planets, ax=ax)
+plot_refractivity_p(planets, ax=ax)
 fig.tight_layout(pad=1)
 plt.show()
 fig.savefig(os.path.join(sys.argv[1], 'refractivity_p.pdf'), dpi=300)
