@@ -1,10 +1,11 @@
 #!/bin/bash
 
-ARTS=$HOME/Hacking/arts-build/clang-debug/src/arts
+ARTS=$ARTS_BUILD_PATH/src/arts
 
 OUTDIR=out-refractivity
+
 mkdir -p $OUTDIR
-$ARTS -I$HOME/Dropbox/Hacking/sat/arts/controlfiles \
-    -D$HOME/Dropbox/Hacking/sat/arts-xml-data \
+$ARTS -I$ARTS_INCLUDE_PATH \
+    -D$ARTS_XML_DATA_PATH \
     -r022 -o $OUTDIR \
     CalcRefraction.arts
