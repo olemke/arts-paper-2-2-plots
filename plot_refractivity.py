@@ -134,14 +134,12 @@ def main():
     fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
     plot_refractivity_n(refdata, planets, ax=ax)
     fig.tight_layout(pad=1)
-    plt.show()
     fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.pdf'), dpi=300)
     fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.png'), dpi=300)
 
     fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
     plot_refractivity_p(refdata, planets, ax=ax)
     fig.tight_layout(pad=1)
-    plt.show()
     fig.savefig(os.path.join(sys.argv[1], 'refractivity_p.pdf'), dpi=300)
 
 main()
