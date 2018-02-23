@@ -2,10 +2,15 @@ import os
 import sys
 from glob import glob
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy
 import typhon.arts.xml as axml
 import typhon.constants
+
+plt.rc('text', usetex=True)
+matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
+                                              r'\sansmath']
 
 
 def read_planet_data(planets):
@@ -24,9 +29,9 @@ def read_planet_data(planets):
     return refdata
 
 
-def plot_refractivity_p(planets, ax=None):
+def plot_refractivity_p(refdata, planets, ax=None):
     if ax is None:
-        fig, ax = subplots()
+        fig, ax = plt.subplots()
 
     ax.set_yscale('log')
     ax.set_xscale('log')
@@ -47,7 +52,7 @@ def plot_refractivity_p(planets, ax=None):
     ax.set_ylim(y_max, y_min)  # implicitly invert yaxis
     ax.set_xscale('log')
     ax.set_xlabel('Refractivity')
-    ax.set_ylabel('Pressure [hPa]')
+    ax.set_ylabel('Pressure $\\left[\\mathrm{hPa}\\right]$')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ylims = ax.get_ylim()
@@ -71,7 +76,7 @@ def plot_refractivity_p(planets, ax=None):
     # ax.legend()
 
 
-def plot_refractivity_n(planets, ax=None):
+def plot_refractivity_n(refdata, planets, ax=None):
     if ax is None:
         fig, ax = subplots()
 
@@ -122,18 +127,22 @@ def plot_refractivity_n(planets, ax=None):
                     )
     # ax.legend()
 
+def main():
+    planets = (('Earth', 2), ('Mars', 3), ('Venus', 0), ('Jupiter', 1))
+    refdata = read_planet_data(planets)
 
-planets = (('Earth', 2), ('Mars', 3), ('Venus', 0), ('Jupiter', 1))
-refdata = read_planet_data(planets)
+    fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
+    plot_refractivity_n(refdata, planets, ax=ax)
+    fig.tight_layout(pad=1)
+    plt.show()
+    fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.pdf'), dpi=300)
+    fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.png'), dpi=300)
 
-fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
-plot_refractivity_n(planets, ax=ax)
-fig.tight_layout(pad=1)
-plt.show()
-fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.pdf'), dpi=300)
+    fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
+    plot_refractivity_p(refdata, planets, ax=ax)
+    fig.tight_layout(pad=1)
+    plt.show()
+    fig.savefig(os.path.join(sys.argv[1], 'refractivity_p.pdf'), dpi=300)
 
-fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
-plot_refractivity_p(planets, ax=ax)
-fig.tight_layout(pad=1)
-plt.show()
-fig.savefig(os.path.join(sys.argv[1], 'refractivity_p.pdf'), dpi=300)
+main()
+
