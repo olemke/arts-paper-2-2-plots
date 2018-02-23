@@ -78,7 +78,7 @@ def plot_refractivity_p(refdata, planets, ax=None):
 
 def plot_refractivity_n(refdata, planets, ax=None):
     if ax is None:
-        fig, ax = subplots()
+        fig, ax = plt.subplots()
 
     ax.set_yscale('log')
     ax.set_xscale('log')
