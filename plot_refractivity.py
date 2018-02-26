@@ -8,10 +8,6 @@ import numpy
 import typhon.arts.xml as axml
 import typhon.constants
 
-plt.rc('text', usetex=True)
-matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
-                                              r'\sansmath']
-
 
 def read_planet_data(planets):
     refdata = {}
@@ -22,16 +18,17 @@ def read_planet_data(planets):
         refdata[planet]['refindex'] = [axml.load(ifile) for ifile in
                                        sorted(glob(
                                            os.path.join(sys.argv[1],
-                                                        "refindexair." + planet + "*.xml")))]
+                                                        'refindexair.' + planet + '*.xml')))]
         refdata[planet]['p_grid'] = axml.load(
-            os.path.join(sys.argv[1], "p_grid." + planet + ".xml"))
+            os.path.join(sys.argv[1], 'p_grid.' + planet + '.xml'))
 
     return refdata
 
 
 def plot_refractivity_p(refdata, planets, ax=None):
+    """Plot refractivity vs. pressure."""
     if ax is None:
-        fig, ax = plt.subplots()
+        ax = plt.gca()
 
     ax.set_yscale('log')
     ax.set_xscale('log')
@@ -77,8 +74,9 @@ def plot_refractivity_p(refdata, planets, ax=None):
 
 
 def plot_refractivity_n(refdata, planets, ax=None):
+    """Plot refractivity vs. number density."""
     if ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.gca()
 
     ax.set_yscale('log')
     ax.set_xscale('log')
@@ -125,9 +123,13 @@ def plot_refractivity_n(refdata, planets, ax=None):
                     arrowprops=dict(facecolor='black', shrink=0.1, width=1,
                                     headlength=6, headwidth=6),
                     )
-    # ax.legend()
+
 
 def main():
+    plt.rc('text', usetex=True)
+    matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
+                                                  r'\sansmath']
+
     planets = (('Earth', 2), ('Mars', 3), ('Venus', 0), ('Jupiter', 1))
     refdata = read_planet_data(planets)
 
@@ -135,12 +137,16 @@ def main():
     plot_refractivity_n(refdata, planets, ax=ax)
     fig.tight_layout(pad=1)
     fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.pdf'), dpi=300)
-    fig.savefig(os.path.join(sys.argv[1], 'refractivity_n.png'), dpi=300)
+    if 'PLT_SHOW' in os.environ:
+        plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.4))
     plot_refractivity_p(refdata, planets, ax=ax)
     fig.tight_layout(pad=1)
     fig.savefig(os.path.join(sys.argv[1], 'refractivity_p.pdf'), dpi=300)
+    if 'PLT_SHOW' in os.environ:
+        plt.show()
 
-main()
 
+if __name__ == '__main__':
+    main()
