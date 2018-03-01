@@ -51,17 +51,6 @@ def CenteredGigaHertzFormatter(center=0.):
     return _CenteredGigaHertzFormatter
 
 
-def CenteredGigaHertzFormatter_bak(center=0.):
-    @FuncFormatter
-    def _CenteredGigaHertzFormatter(x, pos):
-        if numpy.isclose(x, center):
-            return '{:g}'.format(x / 1e9)
-        else:
-            return '${:+.2g}$'.format((x - center) / 1e9)
-
-    return _CenteredGigaHertzFormatter
-
-
 def plot_xsec(lookups, pressure=100, ax=None):
     """Plots absorption cross section from lookup tables."""
     if ax is None:
