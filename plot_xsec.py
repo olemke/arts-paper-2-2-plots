@@ -174,11 +174,13 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('outdir', metavar='OUTDIR', type=str, nargs='?',
                         default='.', help='output directory')
-    parser.add_argument('--notex', action='store_true',
+    parser.add_argument('-t', '--notex', action='store_true',
                         help='don\'t use TeX rendering')
-    parser.add_argument('--show', action='store_true',
+    parser.add_argument('-p', '--pressure', type=float, default=700,
+                        help='pressure used for plot')
+    parser.add_argument('-s', '--show', action='store_true',
                         help='display plots instead of just storing them')
-    parser.add_argument('--tearth', action='store_true',
+    parser.add_argument('-e', '--tearth', action='store_true',
                         help='use Earth\'s temperature for all planets')
     return parser.parse_args()
 
@@ -189,6 +191,7 @@ def main():
     args = parse_args()
     USE_EARTH_TFIELD = args.tearth
     outdir = args.outdir
+    wanted_pressure = args.pressure
 
     plt.rc('text', usetex=not args.notex)
     matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
@@ -199,10 +202,10 @@ def main():
 
     ws = Workspace(verbosity=0)
 
-    wanted_pressure = 700
     # We are only interested in the wanted Pa level, but need more to satisfy
     # the abslookup interpolation order
-    pressures = numpy.array((700, 600, 500, 400, 300, 200, 100))
+    pressures = numpy.linspace(wanted_pressure, wanted_pressure - 10, num=10,
+                               endpoint=True)
 
     print('Performing ARTS calculation')
     arts_common_setup(ws, pressures)
