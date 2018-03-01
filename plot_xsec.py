@@ -13,6 +13,7 @@ export ARTS_INCLUDE_PATH=.:/home/oliver/arts/controlfiles/general:/home/oliver/a
 export ARTS_BUILD_PATH=/home/oliver/arts/build
 
 Other environment variables:
+    USE_TEARTH: Use Earth's temperature profile for all planets
     PLT_SHOW: Set to 1 to display plot.
     PLT_NOTEX: Set to 1 to disable TeX font rendering.
 
@@ -97,9 +98,9 @@ def plot_xsec(lookups, pressure=100, ax=None):
                          reverse=True))), frameon=False, loc=(0.7, 0.4))
 
     ax.xaxis.set_major_formatter(CenteredGigaHertzFormatter(waterline))
-    ax.set_xlim((waterline - 0.3e9, waterline + 0.3e9))
     ax.xaxis.set_ticks(
         [x * 1e9 + waterline for x in numpy.arange(-0.2, 0.21, 0.1)])
+    ax.set_xlim((waterline - 0.3e9, waterline + 0.3e9))
     ax.set_ylim((0., ax.get_ylim()[1]))
     ax.plot([waterline, waterline], [0, ax.get_ylim()[1]],
             zorder=-10, color='k', linewidth=0.8)
@@ -113,7 +114,7 @@ def plot_xsec(lookups, pressure=100, ax=None):
     ax.spines['top'].set_visible(False)
 
 
-def do_arts_common_setup(ws, pressures):
+def arts_common_setup(ws, pressures):
     """Initializes common settings for all planets."""
     # ws.verbositySetScreen(level=0)
     ws.execute_controlfile('general.arts')
@@ -128,13 +129,13 @@ def do_arts_common_setup(ws, pressures):
                              fmin=0., fmax=1e12)
     ws.abs_lines_per_speciesCreateFromLines()
     ws.AtmosphereSet1D()
-    ws.VectorNLinSpace(ws.f_grid, 10000, 182910107053.57, 183710107053.57)
+    ws.VectorNLinSpace(ws.f_grid, 1000, 182910107053.57, 183710107053.57)
     ws.VectorSet(ws.p_grid, pressures)
     ws.sensorOff()
     ws.StringSet(ws.iy_unit, '1')
 
 
-def calc_arts_lookup_table_for_planet(ws, include, species, basename):
+def arts_calc_atmfields(ws, include, species, basename):
     """Planet specific setup and lookup table calculation."""
     ws.execute_controlfile(include)
     # Enable all available broadening species
@@ -142,21 +143,26 @@ def calc_arts_lookup_table_for_planet(ws, include, species, basename):
     ws.AtmRawRead(basename=basename)
     ws.abs_lines_per_speciesCreateFromLines()
     ws.AtmFieldsCalc()
+
+
+def arts_calc_lookup_table(ws):
+    """Planet specific setup and lookup table calculation."""
     ws.abs_xsec_agenda_checkedCalc()
     ws.atmfields_checkedCalc()
     ws.abs_lookupSetup()
     ws.abs_lookupCalc()
 
 
-def str_vmr_table(vmrs, colwidth='12s'):
+def str_table(vmrs, temps, colwidth='12s'):
+    """Create ASCII table with VMR and temperature values."""
     all_species = sorted(set(
         [y for pl in PLANET_SETUP.values() for y in pl['species']]))
 
     strtable = []
-    strtable.append(format('Planet', colwidth)
+    strtable.append(format('Planet', colwidth) + format('T', colwidth)
                     + ''.join(format(s, colwidth) for s in all_species))
     for planet in vmrs:
-        s = [planet]
+        s = [planet, format(temps[planet][0], '3.1f')]
         for species in all_species:
             if species in PLANET_SETUP[planet]['species']:
                 s.append(format(vmrs[planet][numpy.array(
@@ -170,6 +176,9 @@ def str_vmr_table(vmrs, colwidth='12s'):
 def main():
     """Main program."""
     outdir = sys.argv[1] if len(sys.argv) == 2 else '.'
+
+    # Flag to use the temperatures from the Earth's profile for all planets
+    USE_EARTH_TFIELD = 'USE_TEARTH' in os.environ
 
     plt.rc('text', usetex='PLT_NOTEX' not in os.environ)
     matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
@@ -186,18 +195,28 @@ def main():
     pressures = numpy.array((700, 600, 500, 400, 300, 200, 100))
 
     print('Performing ARTS calculation')
-    do_arts_common_setup(ws, pressures)
+    arts_common_setup(ws, pressures)
 
     vmrs = {}
+    temps = {}
+    if USE_EARTH_TFIELD:
+        arts_calc_atmfields(ws, **PLANET_SETUP['Earth'])
+        t_field_earth = ws.t_field.to_typhon()
+
     for planet, item in PLANET_SETUP.items():
-        calc_arts_lookup_table_for_planet(ws, **item)
+        arts_calc_atmfields(ws, **item)
+        if USE_EARTH_TFIELD:
+            ws.t_field = t_field_earth
+        arts_calc_lookup_table(ws)
         abs_lookups[planet] = ws.abs_lookup.to_typhon()
         vmrs[planet] = ws.vmr_field.to_typhon()[:,
                        numpy.isclose(pressures, wanted_pressure), 0,
                        0].flatten()
+        temps[planet] = ws.t_field.to_typhon()[
+            numpy.isclose(pressures, wanted_pressure), 0,
+            0].flatten()
 
-    print('VMRs:')
-    for s in str_vmr_table(vmrs):
+    for s in str_table(vmrs, temps):
         print(s)
 
     os.makedirs(outdir, exist_ok=True)
@@ -205,8 +224,14 @@ def main():
     print('Plotting')
     fig, ax = plt.subplots()
     plot_xsec(abs_lookups, wanted_pressure, ax=ax)
-    fig.savefig(os.path.join(outdir, f'xsec_{wanted_pressure:03.0f}.pdf'),
-                dpi=300)
+    tearth = temps['Earth'][0]
+    filename = os.path.join(outdir,
+                            f'xsec_{wanted_pressure:03.0f}Pa'
+                            + (f'_Tearth_{tearth:.0f}K'
+                               if USE_EARTH_TFIELD else '')
+                            + '.pdf')
+    print(f'Saving {filename}')
+    fig.savefig(filename, dpi=300)
 
     if 'PLT_SHOW' in os.environ:
         plt.show()
