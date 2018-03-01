@@ -1,10 +1,5 @@
 #DEFINITIONS:  -*-sh-*-
 #
-# ARTS control file for testing 1D propagation path calculations
-# with different refractive index calculation methods (None, MicrowavesEarth, MicrowavesGeneral)
-# for the different planets (particularly dependence on atmospheric composition)
-#
-# Jana Mendrok 2013-02-25
 
 Arts2{
 
@@ -14,18 +9,9 @@ INCLUDE "agendas.arts"
 # Agenda for scalar gas absorption calculation
 Copy(abs_xsec_agenda, abs_xsec_agenda__noCIA)
 
-# Use sensor_pos/los to store each case
-VectorCreate( za )
-VectorCreate( ztan )
-VectorSet( ztan, [50e3, 46e3, 34e3, 10e3, 5e3, 2.5e3] )
-nelemGet( nelem, ztan )
-MatrixSetConstant( sensor_pos, nelem, 1, 600e3 )
-VectorSet( rte_pos2, [] )
-
 IndexCreate( ilast )
 
 
-Copy( ppath_agenda, ppath_agenda__FollowSensorLosPath )
 IndexSet( stokes_dim, 1 )
 AtmosphereSet1D
 jacobianOff
@@ -36,18 +22,6 @@ NumericSet( ppath_lmax, 5e3 )
 VectorSet( f_grid, [10e9] )
 
 
-IndexCreate( tpoutlev )
-IndexSet( tpoutlev, 1 )
-IndexCreate( outlev )
-IndexSet( outlev, 0 )
-NumericCreate( tanh1 )
-NumericCreate( tanlat1 )
-VectorCreate( tp1 )
-NumericCreate( tanh2 )
-NumericCreate( tanlat2 )
-VectorCreate( tp2 )
-NumericCreate( diff )
-StringCreate( infostring )
 Tensor3Create( vmr_field3 )
 MatrixCreate( vmr_field2 )
 MatrixCreate( t_field2 )
@@ -68,18 +42,12 @@ AgendaSet( forloop_agenda ){
 
   Extract(rtp_pressure, p_grid, forloop_index)
 
-  #Print(rtp_pressure, 0)
-  #Print(rtp_temperature, 0)
-  #Print(rtp_vmr, 0)
   refr_index_airMicrowavesGeneral(refr_index_air, refr_index_air_group,
               rtp_pressure, rtp_temperature, rtp_vmr, abs_species )
-  #Print(refr_index_air, 0)
 
   StringSet(str, "refindexair")
   Append(str, outfile)
   WriteXMLIndexed("ascii", forloop_index, refr_index_air, str, 3)
-  #WriteXMLIndexed("ascii", forloop_index, rtp_temperature, outfile, 3)
-  #WriteXMLIndexed("ascii", forloop_index, rtp_pressure, outfile, 3)
 }
 
 
@@ -122,21 +90,12 @@ abs_speciesSet( species=[
 "SO2"
 ])
 
-refellipsoidEarth( refellipsoid, "Sphere" )
-# convert (geometric) tangent altitudes to zenith angles at observer
-VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
-Matrix1ColFromVector( sensor_los, za )
-
 VectorNLogSpace( p_grid, 100, 1100e2, 0.1 )
 
 AtmRawRead( basename = "planets/Earth/Fascod/tropical/tropical" )
-#AtmRawRead( basename = "planets/Earth/Fascod/midlatitude-winter/midlatitude-winter" )
 AtmFieldsCalc
-Extract( z_surface, z_field, 0 )
 
 atmfields_checkedCalc
-atmgeom_checkedCalc
-cloudbox_checkedCalc
 
 nelemGet( ilast, p_grid )
 IndexStepDown( ilast, ilast )
@@ -168,11 +127,6 @@ abs_speciesSet( species=[
 "SO2"
 ])
 
-refellipsoidMars( refellipsoid, "Sphere" )
-# convert (geometric) tangent altitudes to zenith angles at observer
-VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
-Matrix1ColFromVector( sensor_los, za )
-
 VectorNLogSpace( p_grid, 100, 766, 0.1 )
 
 AtmRawRead( basename = "planets/Mars/MPS/Mars.Ls0.day.dust-medium/Mars.Ls0.day.dust-medium.sol-avg/Mars.Ls0.day.dust-medium.sol-avg" )
@@ -180,8 +134,6 @@ AtmFieldsCalc
 Extract( z_surface, z_field, 0 )
 
 atmfields_checkedCalc
-atmgeom_checkedCalc
-cloudbox_checkedCalc
 
 nelemGet( ilast, p_grid )
 IndexStepDown( ilast, ilast )
@@ -214,11 +166,6 @@ abs_speciesSet( species=[
 "SO2"
 ])
 
-refellipsoidVenus( refellipsoid, "Sphere" )
-# convert (geometric) tangent altitudes to zenith angles at observer
-VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
-Matrix1ColFromVector( sensor_los, za )
-
 VectorNLogSpace( p_grid, 100, 9.2e6, 0.1 )
 
 AtmRawRead( basename = "planets/Venus/MPS/Venus.vira.day/Venus.vira.day" )
@@ -226,8 +173,6 @@ AtmFieldsCalc( vmr_zeropadding=1 )
 Extract( z_surface, z_field, 0 )
 
 atmfields_checkedCalc( bad_partition_functions_ok = 1 )
-atmgeom_checkedCalc
-cloudbox_checkedCalc
 
 nelemGet( ilast, p_grid )
 IndexStepDown( ilast, ilast )
@@ -261,11 +206,6 @@ abs_speciesSet( species=[
 ])
 
 
-refellipsoidJupiter( refellipsoid, "Sphere" )
-# convert (geometric) tangent altitudes to zenith angles at observer
-VectorZtanToZa1D( za, sensor_pos, refellipsoid, atmosphere_dim, ztan )
-Matrix1ColFromVector( sensor_los, za )
-
 # Pressure grid rougly matching 0 to 80 km.
 VectorNLogSpace( p_grid, 100, 1.0e6, 0.1 )
 
@@ -274,8 +214,6 @@ AtmFieldsCalc( vmr_zeropadding=1 )
 Extract( z_surface, z_field, 0 )
 
 atmfields_checkedCalc( bad_partition_functions_ok = 1 )
-atmgeom_checkedCalc
-cloudbox_checkedCalc
 
 nelemGet( ilast, p_grid )
 IndexStepDown( ilast, ilast )
