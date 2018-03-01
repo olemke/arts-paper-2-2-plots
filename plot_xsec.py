@@ -129,7 +129,7 @@ def arts_common_setup(ws, pressures):
 
 
 def arts_calc_atmfields(ws, include, species, basename):
-    """Planet specific setup and lookup table calculation."""
+    """Planet specific setup of atmospheric fields."""
     ws.execute_controlfile(include)
     # Enable all available broadening species
     ws.abs_speciesSet(species=species)
@@ -139,7 +139,7 @@ def arts_calc_atmfields(ws, include, species, basename):
 
 
 def arts_calc_lookup_table(ws):
-    """Planet specific setup and lookup table calculation."""
+    """Lookup table calculation."""
     ws.abs_xsec_agenda_checkedCalc()
     ws.atmfields_checkedCalc()
     ws.abs_lookupSetup()
@@ -187,7 +187,6 @@ def parse_args():
 
 def main():
     """Main program."""
-
     args = parse_args()
     USE_EARTH_TFIELD = args.tearth
     outdir = args.outdir
