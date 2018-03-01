@@ -1,26 +1,19 @@
+#!/usr/bin/env python3
 """Create and plot absorption cross sections for different planets.
 
 Plots the 183 GHz H2O line for different planets at 100 Pa.
 
-Usage: python plot_xsec.py OUTDIR
-
-The plot is created in the given output directory. OUTDIR is created if it
-doesn't exist.
+Usage: python plot_xsec.py -h
 
 The following environment variables must be set:
 
 export ARTS_INCLUDE_PATH=.:/home/oliver/arts/controlfiles/general:/home/oliver/arts-xml-data
 export ARTS_BUILD_PATH=/home/oliver/arts/build
 
-Other environment variables:
-    USE_TEARTH: Use Earth's temperature profile for all planets
-    PLT_SHOW: Set to 1 to display plot.
-    PLT_NOTEX: Set to 1 to disable TeX font rendering.
-
 Author: oliver.lemke@uni-hamburg.de
 """
+import argparse
 import os
-import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -173,14 +166,31 @@ def str_table(vmrs, temps, colwidth='12s'):
     return strtable
 
 
+def parse_args():
+    """Parse commandline arguments."""
+    parser = argparse.ArgumentParser(
+        description='Create and plot absorption cross sections for '
+                    'different planets.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('outdir', metavar='OUTDIR', type=str, nargs='?',
+                        default='.', help='output directory')
+    parser.add_argument('--notex', action='store_true',
+                        help='don\'t use TeX rendering')
+    parser.add_argument('--show', action='store_true',
+                        help='display plots instead of just storing them')
+    parser.add_argument('--tearth', action='store_true',
+                        help='use Earth\'s temperature for all planets')
+    return parser.parse_args()
+
+
 def main():
     """Main program."""
-    outdir = sys.argv[1] if len(sys.argv) == 2 else '.'
 
-    # Flag to use the temperatures from the Earth's profile for all planets
-    USE_EARTH_TFIELD = 'USE_TEARTH' in os.environ
+    args = parse_args()
+    USE_EARTH_TFIELD = args.tearth
+    outdir = args.outdir
 
-    plt.rc('text', usetex='PLT_NOTEX' not in os.environ)
+    plt.rc('text', usetex=not args.notex)
     matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
                                                   r'\sansmath']
     plt.style.use(styles('typhon'))
@@ -233,7 +243,7 @@ def main():
     print(f'Saving {filename}')
     fig.savefig(filename, dpi=300)
 
-    if 'PLT_SHOW' in os.environ:
+    if args.show:
         plt.show()
 
 
