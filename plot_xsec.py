@@ -23,20 +23,28 @@ from typhon.arts.workspace import Workspace
 from typhon.plots import styles
 
 PLANET_SETUP = {
-    'Earth': {'species': ['H2O', 'O2', 'CO2', 'N2'],
-              'basename': 'planets/Earth/Fascod/tropical/tropical',
-              'include': 'planet_earth.arts'},
-    'Mars': {'species': ['H2O', 'O2', 'CO2', 'H2', 'N2'],
-             'basename': 'planets/Mars/MPS/Mars.Ls0.day.dust-medium/'
-                         'Mars.Ls0.day.dust-medium.sol-avg/'
-                         'Mars.Ls0.day.dust-medium.sol-avg',
-             'include': 'planet_mars.arts'},
-    'Venus': {'species': ['H2O', 'O2', 'CO2', 'N2'],
-              'basename': 'planets/Venus/MPS/Venus.vira.day/Venus.vira.day',
-              'include': 'planet_venus.arts'},
-    'Jupiter': {'species': ['H2O', 'CO2', 'H2', 'He'],
-                'basename': 'planets/Jupiter/MPS/Jupiter.mean/Jupiter.mean',
-                'include': 'planet_jupiter.arts'},
+    'Earth': {
+        'species': ['H2O', 'O2', 'CO2', 'N2'],
+        'basename': 'planets/Earth/Fascod/tropical/tropical',
+        'include': 'planet_earth.arts',
+    },
+    'Mars': {
+        'species': ['H2O', 'O2', 'CO2', 'H2', 'N2'],
+        'basename': 'planets/Mars/MPS/Mars.Ls0.day.dust-medium/'
+                    'Mars.Ls0.day.dust-medium.sol-avg/'
+                    'Mars.Ls0.day.dust-medium.sol-avg',
+        'include': 'planet_mars.arts',
+    },
+    'Venus': {
+        'species': ['H2O', 'O2', 'CO2', 'N2'],
+        'basename': 'planets/Venus/MPS/Venus.vira.day/Venus.vira.day',
+        'include': 'planet_venus.arts',
+    },
+    'Jupiter': {
+        'species': ['H2O', 'CO2', 'H2', 'He'],
+        'basename': 'planets/Jupiter/MPS/Jupiter.mean/Jupiter.mean',
+        'include': 'planet_jupiter.arts',
+    },
 }
 
 
