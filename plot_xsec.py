@@ -7,8 +7,8 @@ Usage: python plot_xsec.py -h
 
 The following environment variables must be set:
 
-export ARTS_INCLUDE_PATH=.:/home/oliver/arts/controlfiles/general:/home/oliver/arts-xml-data
-export ARTS_BUILD_PATH=/home/oliver/arts/build
+export ARTS_INCLUDE_PATH=.:$HOME/arts/controlfiles/general:$HOME/arts-xml-data
+export ARTS_BUILD_PATH=$HOME/arts/build
 
 Author: oliver.lemke@uni-hamburg.de
 """
