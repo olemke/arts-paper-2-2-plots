@@ -18,9 +18,9 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy
+import typhon
 from matplotlib.ticker import FuncFormatter
 from typhon.arts.workspace import Workspace
-from typhon.plots import styles
 
 PLANET_SETUP = {
     'Earth': {
@@ -79,13 +79,8 @@ def plot_xsec(lookups, pressure=100, ax=None):
         ax.plot(abs_lookup.frequencygrid, xsec_h2o, linewidth=3,
                 label=planet, rasterized=True, zorder=zorders[planet])
 
-    # Sort legend entries by their cross section peak values
-    ax.legend(*zip(*((h, l) for _, h, l in
-                     sorted(
-                         zip([numpy.max(h.get_ydata()) for h in
-                              ax.get_legend_handles_labels()[0]],
-                             *ax.get_legend_handles_labels()),
-                         reverse=True))), frameon=False, loc=(0.7, 0.4))
+    ax.legend(*typhon.plots.sorted_legend_handles_labels(),
+              frameon=False, loc=(0.7, 0.4))
 
     ax.xaxis.set_major_formatter(CenteredGigaHertzFormatter(waterline))
     ax.xaxis.set_ticks(
@@ -192,7 +187,7 @@ def main():
     plt.rc('text', usetex=not args.notex)
     matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
                                                   r'\sansmath']
-    plt.style.use(styles('typhon'))
+    plt.style.use(typhon.plots.styles('typhon'))
 
     abs_lookups = {}
 
