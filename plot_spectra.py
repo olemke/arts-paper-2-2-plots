@@ -19,7 +19,6 @@ import numpy
 import typhon
 from matplotlib.ticker import FuncFormatter
 from typhon.arts.workspace import Workspace, arts_agenda
-from typhon.plots import styles
 
 NPRESSURES = 100
 
@@ -38,7 +37,7 @@ PLANET_SETUP = {
     },
     'Mars': {
         'species': [
-            'CH4', 'CO', 'CO2', 'CO2-CIA-CO2-0', #'H2', 'H2O', 'H2O2', 'H2S',
+            'CH4', 'CO', 'CO2', 'CO2-CIA-CO2-0', 'H2', 'H2O', 'H2O2', 'H2S',
             'HCl', 'N2', 'NO2', 'O', 'O2', 'O3', 'OCS', 'OH', 'SO2'],
         'basename': 'planets/Mars/MPS/Mars.Ls0.day.dust-medium/'
                     'Mars.Ls0.day.dust-medium.sol-avg/'
@@ -54,7 +53,7 @@ PLANET_SETUP = {
         'basename': 'planets/Venus/MPS/Venus.vira.day/Venus.vira.day',
         'include': 'planet_venus.arts',
         'p_grid': (NPRESSURES * 6, 9.2e6, 0.1),
-        'reflectivity': 0.,
+        'reflectivity': 0.15,
     },
     'Jupiter': {
         'species': [
@@ -141,8 +140,6 @@ def arts_common_setup(ws):
     ws.StringSet(ws.iy_unit, 'PlanckBT')
     ws.sensor_pos = numpy.array([[600e3]])
     ws.sensor_los = numpy.array([[180.]])
-    ws.ReadXML(ws.abs_cia_data,
-               filename="spectroscopy/cia/hitran2011/hitran_cia2012_adapted.xml.gz")
 
 
 def arts_calc_atmfields(ws, include, species, basename, p_grid, reflectivity):
@@ -188,6 +185,22 @@ def surface_rtprop_agenda__Blackbody_FixT(ws):
     ws.surfaceBlackbody()
 
 
+def annotate_lines(ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    LINES = (
+        ('O$_2$', 119., 208.952),
+        ('H$_2$O', 183., 243.323),
+        ('CO', 231., 231.678),
+        ('PH$_3$', 267., 144.114),
+    )
+
+    for label, x, y in LINES:
+        ax.text(x * 1e9, y - 9, label, horizontalalignment='center',
+                fontsize='xx-small')
+
+
 def main():
     """Main program."""
     args = parse_args()
@@ -198,7 +211,7 @@ def main():
     plt.rc('text', usetex=not args.notex)
     matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{sansmath}',
                                                   r'\sansmath']
-    plt.style.use(styles('typhon'))
+    plt.style.use(typhon.plots.styles('typhon'))
 
     ws = Workspace(verbosity=2)
     ws.verbosityInit()
@@ -216,6 +229,9 @@ def main():
             ws.ReadXML(ws.abs_lookup, filename=lookup_file)
             ws.abs_lookupAdapt()
         else:
+            ws.ReadXML(ws.abs_cia_data,
+                       filename='spectroscopy/cia/hitran2011/'
+                                'hitran_cia2012_adapted.xml.gz')
             ws.abs_linesReadFromSplitArtscat(
                 basename='spectroscopy/Perrin/', fmin=0., fmax=1e12)
             ws.abs_lines_per_speciesCreateFromLines()
@@ -234,6 +250,8 @@ def main():
     print('Plotting')
     fig, ax = plt.subplots()
     plot_spectra(y_all)
+    ax.set_xlim(100e9, 300e9)
+    annotate_lines()
     filename = os.path.join(outdir, 'planet_spectra.pdf')
     print(f'Saving {filename}')
     fig.savefig(filename, dpi=300)
