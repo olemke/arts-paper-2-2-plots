@@ -33,7 +33,7 @@ PLANET_SETUP = {
         'basename': 'planets/Earth/Fascod/tropical/tropical',
         'include': 'planet_earth.arts',
         'p_grid': (NPRESSURES * 2, 1100e2, 0.1),
-        'reflectivity': 0.,
+        'reflectivity': 0.4,
     },
     'Mars': {
         'species': [
