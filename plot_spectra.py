@@ -18,8 +18,17 @@ import matplotlib.pyplot as plt
 import numpy
 import typhon
 from matplotlib.ticker import FuncFormatter
-from typhon.arts.workspace import Workspace, arts_agenda
+from typhon.arts.workspace import Workspace
 
+# Frequency grid
+F_MIN = 100e9
+F_MAX = 300e9
+
+# Observation position and looking angle
+SENSOR_POS = 600e3
+SENSOR_LOS = 180.
+
+# Base number of pressures, multiples are used depending on planet atmosphere
 NPRESSURES = 100
 
 PLANET_SETUP = {
@@ -74,6 +83,8 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('outdir', metavar='OUTDIR', type=str, nargs='?',
                         default='.', help='output directory')
+    parser.add_argument('--nfreq', '-f', metavar='NUMFREQ', type=int,
+                        default=1000, help='number of frequencies')
     parser.add_argument('--recalc', '-r', action='store_true',
                         help='recalculate lookup tables')
     parser.add_argument('-t', '--notex', action='store_true',
@@ -85,14 +96,14 @@ def parse_args():
 
 def GigaHertzFormatter():
     @FuncFormatter
-    def _GigaHertzFormatter(x, pos):
+    def _GigaHertzFormatter(x, _):
         return r'${:.0f}$'.format(x / 1e9)
 
     return _GigaHertzFormatter
 
 
 def plot_spectra(y_all, ax=None):
-    """Plots absorption cross section from lookup tables."""
+    """Plots absorption spectra."""
     if ax is None:
         ax = plt.gca()
 
@@ -111,35 +122,34 @@ def plot_spectra(y_all, ax=None):
     ax.spines['top'].set_visible(False)
 
 
-def arts_common_setup(ws):
+def arts_common_setup(ws, nfrequencies):
     """Initializes common settings for all planets."""
-    # ws.verbositySetScreen(level=0)
     ws.execute_controlfile('general.arts')
     ws.execute_controlfile('continua.arts')
     ws.execute_controlfile('agendas.arts')
-    ws.jacobianOff()
-    ws.cloudboxOff()
-    # ws.Copy(ws.abs_xsec_agenda, ws.abs_xsec_agenda__noCIA)
-    ws.Copy(ws.abs_xsec_agenda, ws.abs_xsec_agenda__withCIAextraT)
-    ws.Copy(ws.iy_main_agenda, ws.iy_main_agenda__Emission)
-    ws.Copy(ws.ppath_agenda, ws.ppath_agenda__FollowSensorLosPath)
-    ws.Copy(ws.iy_space_agenda, ws.iy_space_agenda__CosmicBackground)
-    ws.Copy(ws.iy_surface_agenda, ws.iy_surface_agenda__UseSurfaceRtprop)
-    ws.Copy(ws.propmat_clearsky_agenda, ws.propmat_clearsky_agenda__LookUpTable)
-    # ws.Copy(ws.surface_rtprop_agenda,
-    # surface_rtprop_agenda__Blackbody_FixT)  # FIXME ok?
-    # ws.NumericSet(ws.surface_skin_t, 180.)
-    ws.Copy(ws.surface_rtprop_agenda,
-            ws.surface_rtprop_agenda__Specular_NoPol_ReflFix_SurfTFromt_surface)
-    ws.Copy(ws.ppath_step_agenda, ws.ppath_step_agenda__GeometricPath)
+
     ws.IndexSet(ws.stokes_dim, 1)
     ws.AtmosphereSet1D()
-    ws.VectorNLinSpace(ws.f_grid, 1000, 100e9, 300e9)
-    ws.sensorOff()
-    # ws.StringSet(ws.iy_unit, '1')
     ws.StringSet(ws.iy_unit, 'PlanckBT')
-    ws.sensor_pos = numpy.array([[600e3]])
-    ws.sensor_los = numpy.array([[180.]])
+
+    ws.VectorNLinSpace(ws.f_grid, nfrequencies, F_MIN, F_MAX)
+
+    ws.sensor_pos = numpy.array([[SENSOR_POS]])
+    ws.sensor_los = numpy.array([[SENSOR_LOS]])
+
+    ws.cloudboxOff()
+    ws.jacobianOff()
+    ws.sensorOff()
+
+    ws.Copy(ws.abs_xsec_agenda, ws.abs_xsec_agenda__withCIAextraT)
+    ws.Copy(ws.iy_main_agenda, ws.iy_main_agenda__Emission)
+    ws.Copy(ws.iy_space_agenda, ws.iy_space_agenda__CosmicBackground)
+    ws.Copy(ws.iy_surface_agenda, ws.iy_surface_agenda__UseSurfaceRtprop)
+    ws.Copy(ws.ppath_agenda, ws.ppath_agenda__FollowSensorLosPath)
+    ws.Copy(ws.ppath_step_agenda, ws.ppath_step_agenda__GeometricPath)
+    ws.Copy(ws.propmat_clearsky_agenda, ws.propmat_clearsky_agenda__LookUpTable)
+    ws.Copy(ws.surface_rtprop_agenda,
+            ws.surface_rtprop_agenda__Specular_NoPol_ReflFix_SurfTFromt_surface)
 
 
 def arts_calc_atmfields(ws, include, species, basename, p_grid, reflectivity):
@@ -169,34 +179,19 @@ def arts_calc_lookup_table(ws):
     ws.abs_lookupCalc()
 
 
-@arts_agenda
-def propmat_clearsky_agenda_lookup_faraday(ws):
-    ws.Ignore(ws.rtp_mag)
-    ws.Ignore(ws.rtp_los)
-    ws.Ignore(ws.rtp_nlte)
-    ws.propmat_clearskyInit()
-    ws.propmat_clearskyAddFromLookup()
-    # ws.propmat_clearskyAddFaraday()
-
-
-@arts_agenda
-def surface_rtprop_agenda__Blackbody_FixT(ws):
-    ws.Touch(ws.surface_skin_t)
-    ws.surfaceBlackbody()
-
-
 def annotate_lines(ax=None):
+    """Annotate interesting absorption lines."""
     if ax is None:
         ax = plt.gca()
 
-    LINES = (
+    labels = (
         ('O$_2$', 119., 208.952),
         ('H$_2$O', 183., 243.323),
         ('CO', 231., 231.678),
         ('PH$_3$', 267., 144.114),
     )
 
-    for label, x, y in LINES:
+    for label, x, y in labels:
         ax.text(x * 1e9, y - 9, label, horizontalalignment='center',
                 fontsize='xx-small')
 
@@ -217,7 +212,7 @@ def main():
     ws.verbosityInit()
 
     print('Performing ARTS calculation')
-    arts_common_setup(ws)
+    arts_common_setup(ws, args.nfreq)
 
     y_all = {}
 
@@ -250,8 +245,9 @@ def main():
     print('Plotting')
     fig, ax = plt.subplots()
     plot_spectra(y_all)
-    ax.set_xlim(100e9, 300e9)
+    ax.set_xlim(F_MIN, F_MAX)
     annotate_lines()
+
     filename = os.path.join(outdir, 'planet_spectra.pdf')
     print(f'Saving {filename}')
     fig.savefig(filename, dpi=300)
