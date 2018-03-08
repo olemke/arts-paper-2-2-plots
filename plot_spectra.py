@@ -179,20 +179,21 @@ def arts_calc_lookup_table(ws):
     ws.abs_lookupCalc()
 
 
-def annotate_lines(ax=None):
+def annotate_lines(abs_data, ax=None):
     """Annotate interesting absorption lines."""
     if ax is None:
         ax = plt.gca()
 
     labels = (
-        ('O$_2$', 119., 208.952),
-        ('H$_2$O', 183., 243.323),
-        ('CO', 231., 231.678),
-        ('PH$_3$', 267., 144.114),
+        ('O$_2$', 'Earth', 119.022e9),
+        ('H$_2$O', 'Earth', 183.310e9),
+        ('CO', 'Venus', 230.539e9),
+        ('PH$_3$', 'Jupiter', 266.971e9),
     )
 
-    for label, x, y in labels:
-        ax.text(x * 1e9, y - 9, label, horizontalalignment='center',
+    for label, planet, x in labels:
+        y = numpy.interp(x, abs_data[planet]['f_grid'], abs_data[planet]['y'])
+        ax.text(x, y - 9, label, horizontalalignment='center',
                 fontsize='xx-small')
 
 
@@ -246,7 +247,7 @@ def main():
     fig, ax = plt.subplots()
     plot_spectra(y_all)
     ax.set_xlim(F_MIN, F_MAX)
-    annotate_lines()
+    annotate_lines(y_all)
 
     filename = os.path.join(outdir, 'planet_spectra.pdf')
     print(f'Saving {filename}')
