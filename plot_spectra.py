@@ -34,11 +34,13 @@ NPRESSURES = 100
 PLANET_SETUP = {
     'Earth': {
         'species': [
-            'C2H2', 'C2H6', 'CH3Cl', 'CH4', 'CO', 'CO2', 'CO2-CIA-CO2-0',
-            'COF2', 'ClO', 'H2CO',
-            'H2O-SelfContStandardType, H2O-ForeignContStandardType, H2O',
+            'C2H2', 'CH3Cl', 'CH4', 'CO', 'CO2', 'CO2-CIA-CO2-0', 'ClO', 'H2CO',
+            'H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252, H2O',
             'H2O2', 'HBr', 'HCN', 'HCl', 'HF', 'HI', 'HNO3', 'HOCl', 'N2',
-            'N2O', 'NH3', 'NO', 'NO2', 'O2', 'O3', 'OH', 'PH3', 'SF6', 'SO2'],
+            'N2O', 'NH3', 'NO', 'NO2', 'O2-PWR98, O2', 'O3', 'OH', 'PH3', 'SO2',
+            # Species with no effect:
+            'C2H6', 'COF2', 'SF6',
+        ],
         'basename': 'planets/Earth/Fascod/tropical/tropical',
         'include': 'planet_earth.arts',
         'p_grid': (NPRESSURES * 2, 1100e2, 0.1),
@@ -47,7 +49,9 @@ PLANET_SETUP = {
     'Mars': {
         'species': [
             'CH4', 'CO', 'CO2', 'CO2-CIA-CO2-0', 'H2', 'H2O', 'H2O2', 'H2S',
-            'HCl', 'N2', 'NO2', 'O', 'O2', 'O3', 'OCS', 'OH', 'SO2'],
+            'HCl', 'N2', 'NO2', 'O2-PWR98, O2', 'O3', 'OCS', 'OH', 'SO2',
+            # Species with no effect:
+            'O', ],
         'basename': 'planets/Mars/MPS/Mars.Ls0.day.dust-medium/'
                     'Mars.Ls0.day.dust-medium.sol-avg/'
                     'Mars.Ls0.day.dust-medium.sol-avg',
@@ -57,8 +61,11 @@ PLANET_SETUP = {
     },
     'Venus': {
         'species': [
-            'CO', 'CO2', 'CO2-CIA-CO2-0', 'H2O', 'H2SO4', 'HCl', 'HF', 'N2',
-            'NO', 'NO2', 'O', 'O2', 'O3', 'OCS', 'SO', 'SO2'],
+            'CO', 'CO2', 'CO2-CIA-CO2-0', 'H2SO4', 'HCl', 'HF', 'N2',
+            'H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252, H2O',
+            'NO', 'NO2', 'O2-PWR98, O2', 'O3', 'OCS', 'SO', 'SO2',
+            # Species with no effect:
+            'O', ],
         'basename': 'planets/Venus/MPS/Venus.vira.day/Venus.vira.day',
         'include': 'planet_venus.arts',
         'p_grid': (NPRESSURES * 6, 9.2e6, 0.1),
@@ -66,8 +73,12 @@ PLANET_SETUP = {
     },
     'Jupiter': {
         'species': [
-            'C2H2', 'C2H6', 'C3H8', 'CH4', 'CO', 'CO2', 'H2', 'H2O',
-            'H2S', 'HCN', 'He', 'NH3', 'PH3'],
+            'C2H2', 'C3H8', 'CH4', 'CO', 'CO2',
+            'H2', 'H2-CIA-CH4-0', 'CH4-CIA-CH4-0',
+            'H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252, H2O',
+            'H2S', 'HCN', 'NH3', 'PH3',
+            # Species with no effect:
+            'C2H6', 'H2-CIA-H2-0', 'H2-CIA-He-0', 'He', ],
         'basename': 'planets/Jupiter/MPS/Jupiter.mean/Jupiter.mean',
         'include': 'planet_jupiter.arts',
         'p_grid': (NPRESSURES * 6, 1.0e6, 0.1),
@@ -111,7 +122,7 @@ def plot_spectra(y_all, ax=None):
 
     for planet, y_data in y_all.items():
         ax.plot(y_data['f_grid'], y_data['y'],
-                label=planet, rasterized=True, zorder=zorders[planet])
+                label=planet, zorder=zorders[planet])
 
     ax.legend(*typhon.plots.sorted_legend_handles_labels(),
               frameon=False)
