@@ -94,6 +94,10 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('outdir', metavar='OUTDIR', type=str, nargs='?',
                         default='.', help='output directory')
+    parser.add_argument('--lineshape', '-l', metavar='LINESHAPENAME', type=str,
+                        default='Voigt_Kuntz6',
+                        help='Lineshape used by ARTS, '
+                             'see docs for abs_lineshapeDefine')
     parser.add_argument('--nfreq', '-f', metavar='NUMFREQ', type=int,
                         default=1000, help='number of frequencies')
     parser.add_argument('--recalc', '-r', action='store_true',
@@ -133,11 +137,13 @@ def plot_spectra(y_all, ax=None):
     ax.spines['top'].set_visible(False)
 
 
-def arts_common_setup(ws, nfrequencies):
+def arts_common_setup(ws, nfrequencies, lineshape='Voigt_Kuntz6'):
     """Initializes common settings for all planets."""
     ws.execute_controlfile('general.arts')
     ws.execute_controlfile('continua.arts')
     ws.execute_controlfile('agendas.arts')
+
+    ws.abs_lineshapeDefine(shape=lineshape, forefactor="VVH", cutoff=-1.)
 
     ws.IndexSet(ws.stokes_dim, 1)
     ws.AtmosphereSet1D()
@@ -224,7 +230,7 @@ def main():
     ws.verbosityInit()
 
     print('Performing ARTS calculation')
-    arts_common_setup(ws, args.nfreq)
+    arts_common_setup(ws, args.nfreq, args.lineshape)
 
     y_all = {}
 
