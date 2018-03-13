@@ -101,7 +101,7 @@ def parse_args():
     parser.add_argument('--nfreq', '-f', metavar='NUMFREQ', type=int,
                         default=1000, help='number of frequencies')
     parser.add_argument('--recalc', '-r', action='store_true',
-                        help='recalculate lookup tables')
+                        help='recalculate existing lookup tables')
     parser.add_argument('-t', '--notex', action='store_true',
                         help='don\'t use TeX rendering')
     parser.add_argument('-s', '--show', action='store_true',
