@@ -38,6 +38,8 @@ def parse_args():
                         help='don\'t use TeX rendering')
     parser.add_argument('-s', '--show', action='store_true',
                         help='display plots instead of just storing them')
+    parser.add_argument('-T', '--title', metavar='TITLE', type=str,
+                        help='Plot title')
     parser.add_argument('-p', '--pressures', metavar='PYTHONLIST', type=str,
                         help='List of pressures in Pa to plot, '
                              'e.g. [1,10,100,1000,10000].\n'
@@ -86,7 +88,7 @@ def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None):
         ax.spines['top'].set_visible(False)
 
 
-def plot_lookup_opacity(lookup, opacity=None, species=None, ax=None,
+def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
                         oneline=False,
                         total=False):
     if ax is None:
@@ -97,12 +99,8 @@ def plot_lookup_opacity(lookup, opacity=None, species=None, ax=None,
         species = lookup.speciestags
 
     for tag in species:
-        if opacity is not None:
-            xsec = lookup.absorptioncrosssection[0,
-                   lookup.speciestags.index(tag), :, :]
-            xsec_sum = numpy.abs(numpy.trapz(xsec, lookup.pressuregrid, axis=1))
-        ax.plot(lookup.frequencygrid, opacity[lookup.speciestags.index(tag),
-                                      :] if opacity is not None else xsec_sum,
+        ax.plot(lookup.frequencygrid,
+                opacity[lookup.speciestags.index(tag), :],
                 label=',\n'.join(tag))
     if oneline:
         ax.plot(lookup.frequencygrid, numpy.ones_like(lookup.frequencygrid),
@@ -227,6 +225,9 @@ def main():
         filename += '_opacity.pdf'
     else:
         filename += '_xsecs.pdf'
+
+    if args.title is not None:
+        fig.suptitle(args.title)
 
     print(f'Saving {filename}')
     fig.savefig(filename, bbox='tight', dpi=300)
