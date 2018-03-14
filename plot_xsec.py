@@ -77,7 +77,7 @@ def plot_xsec(lookups, pressure=100, ax=None):
                    species_h2o, 0, :, selected_pressure].flatten()
 
         ax.plot(abs_lookup.frequencygrid, xsec_h2o, linewidth=3,
-                label=planet, rasterized=True, zorder=zorders[planet])
+                label=planet, zorder=zorders[planet])
 
     ax.legend(*typhon.plots.sorted_legend_handles_labels(),
               frameon=False, loc=(0.7, 0.4))
