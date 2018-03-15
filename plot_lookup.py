@@ -34,6 +34,8 @@ def parse_args():
                         help='ARTS lookup table XML file')
     parser.add_argument('-o', '--outdir', metavar='DIRECTORY', type=str,
                         default='.', help='output directory')
+    parser.add_argument('-e', '--temppert', metavar='TEMPPERT', type=int,
+                        default=0, help='Index of temperature pertubation')
     parser.add_argument('-t', '--notex', action='store_true',
                         help='don\'t use TeX rendering')
     parser.add_argument('-s', '--show', action='store_true',
@@ -44,6 +46,9 @@ def parse_args():
                         help='List of pressures in Pa to plot, '
                              'e.g. [1,10,100,1000,10000].\n'
                              'Only used for cross-section plots.')
+    parser.add_argument('-V', '--vmrpert', metavar='VMRPERT', type=int,
+                        default=0, help='Index of nonlinear species vmr'
+                                        'pertubation')
     parser.add_argument('--altitudes', '-z', metavar='ALTITUDEPROFILE',
                         type=str, help='ARTS altitude profile XML file')
     return parser.parse_args()
@@ -57,7 +62,22 @@ def GigaHertzFormatter():
     return _GigaHertzFormatter
 
 
-def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None):
+def get_species_index(lookup, species, vmrpert):
+    speciescount = numpy.zeros_like(lookup.speciestags)
+    speciescount[lookup.nonlinearspecies] = (
+            lookup.nonlinearspeciesvmrpertubations.size - 1)
+    spindex = lookup.speciestags.index(species)
+    spindex += numpy.sum(speciescount[0:spindex])
+    if lookup.speciestags.index(species) in lookup.nonlinearspecies:
+        if vmrpert > speciescount[spindex]:
+            raise RuntimeError(
+                'Nonlinear species VMR pertubation index too large')
+        spindex += vmrpert
+    return spindex
+
+
+def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None, tpert=0,
+                     vmrpert=0):
     if ax is None:
         ax = plt.gca()
 
@@ -70,27 +90,26 @@ def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None):
             cycler('color', [plt.cm.viridis(i) for i in
                              numpy.linspace(0, 1, len(ipressures))]))
         for pi in ipressures:
-            xsec = lookup.absorptioncrosssection[0,
-                   lookup.speciestags.index(tag), :, pi]
+            xsec = lookup.absorptioncrosssection[
+                   tpert, get_species_index(lookup, tag, vmrpert), :, pi]
             ax.plot(lookup.frequencygrid, xsec)
 
-        if len(species) > 1:
-            ax.legend(fontsize='xx-small', frameon=False)
-        else:
-            ax.set_title(
-                ',\n'.join(re.sub('(-\*)+$', '', s) for s in species[0]),
-                y=1. - len(species[0]) * 0.05,
-                fontsize='xx-small')
+    if len(species) > 1:
+        ax.legend(fontsize='xx-small', frameon=False)
+    else:
+        ax.set_title(
+            ',\n'.join(re.sub('(-\*)+$', '', s) for s in species[0]),
+            y=1. - len(species[0]) * 0.05,
+            fontsize='xx-small')
 
-        ax.xaxis.set_major_formatter(GigaHertzFormatter())
-        ax.tick_params(axis='both', which='major', labelsize='xx-small')
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
+    ax.xaxis.set_major_formatter(GigaHertzFormatter())
+    ax.tick_params(axis='both', which='major', labelsize='xx-small')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
 
 
 def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
-                        oneline=False,
-                        total=False):
+                        oneline=False, total=False):
     if ax is None:
         ax = plt.gca()
 
@@ -122,14 +141,20 @@ def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
     ax.spines['top'].set_visible(False)
 
 
-def calc_opacity_from_lookup(lookup, z):
+def calc_opacity_from_lookup(lookup, z=None, tpert=0):
     ni = (lookup.pressuregrid * lookup.referencevmrprofiles
           / lookup.referencetemperatureprofile / typhon.constants.boltzmann
           ).reshape(len(lookup.speciestags), 1, len(lookup.pressuregrid))
 
-    alpha = ni * lookup.absorptioncrosssection[0, :, :, :]
+    alpha = ni * lookup.absorptioncrosssection[tpert, :, :, :]
 
-    z = interp1d(z.grids[0], z.data[:, 0, 0])(lookup.pressuregrid)
+    if z is not None:
+        z = interp1d(z.grids[0], z.data[:, 0, 0])(lookup.pressuregrid)
+    else:
+        pgrid = lookup.pressuregrid
+        z = ((pgrid[0] / pgrid) ** (1 / 5.257) - 1) * (
+                lookup.referencetemperatureprofile + 273.15) / 0.0065
+
     return numpy.vstack(numpy.trapz(ialpha, z, axis=1) for ialpha in alpha)
 
 
@@ -192,7 +217,7 @@ def main():
     for cax, species in zip(ax[1:, :].flatten(), lookup.speciestags):
         if do_opacity:
             plot_lookup_opacity(lookup, opacity, oneline=True, total=True,
-                                species=[species], ax=cax)
+                                species=[species], ax=cax, tpert=args.temppert)
         else:
             psize = lookup.pressuregrid.size
             if args.pressures is not None:
@@ -205,7 +230,8 @@ def main():
                                         num=6,
                                         endpoint=False,
                                         dtype=int)))
-            plot_lookup_xsec(lookup, ipressures, species=[species], ax=cax)
+            plot_lookup_xsec(lookup, ipressures, species=[species], ax=cax,
+                             tpert=args.temppert, vmrpert=args.vmrpert)
 
     if rows * cols > len(lookup.speciestags):
         for cax in ax[1:, :].flatten()[len(lookup.speciestags):]:
@@ -218,6 +244,9 @@ def main():
         add_opacity_legend(ax[0, 0])
     else:
         add_xsec_legend(lookup, ipressures, ax[0, 0])
+
+    for cax in ax[-1, :]:
+        cax.set_xlabel('Frequency [GHz]', fontsize='xx-small')
 
     filename = os.path.join(outdir, os.path.splitext(
         os.path.basename(args.lookup))[0])
