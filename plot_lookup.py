@@ -28,7 +28,7 @@ PLANETS_R = {
     'Earth': typhon.constants.gas_constant / (
             0.78 * 28.01 + 0.21 * 32 + 0.01 * 39.95) * 1000,
     'Mars': typhon.constants.gas_constant / (
-            0.95 * 0.4401 + 0.027 * 28.01) * 1000,
+            0.95 * 44.01 + 0.027 * 28.01) * 1000,
     'Venus': typhon.constants.gas_constant / (
             0.97 * 44.01 + 0.044 * 28.01) * 1000,
     'Jupiter': typhon.constants.gas_constant / (
