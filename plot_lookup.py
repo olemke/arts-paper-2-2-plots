@@ -17,11 +17,22 @@ from cycler import cycler
 from matplotlib.ticker import FuncFormatter
 from scipy.interpolate import interp1d
 
-PLANETS_Z = {
-    'Earth:': 'input/Earth.tropical.z.xml',
-    'Mars:': 'input/Mars.Ls0.day.dust-medium.sol-avg.z.xml',
-    'Venus:': 'input/Venus.vira.day.z.xml',
-    'Jupiter:': 'input/Jupiter.mean.z.xml',
+PLANETS_G = {
+    'Earth': typhon.constants.g,
+    'Mars': 3.711,
+    'Venus': 8.87,
+    'Jupiter': 24.79,
+}
+
+PLANETS_R = {
+    'Earth': typhon.constants.gas_constant / (
+            0.78 * 28.01 + 0.21 * 32 + 0.01 * 39.95) * 1000,
+    'Mars': typhon.constants.gas_constant / (
+            0.95 * 0.4401 + 0.027 * 28.01) * 1000,
+    'Venus': typhon.constants.gas_constant / (
+            0.97 * 44.01 + 0.044 * 28.01) * 1000,
+    'Jupiter': typhon.constants.gas_constant / (
+            0.86 * 2.016 + 0.14 * 4.003) * 1000
 }
 
 
@@ -35,19 +46,24 @@ def parse_args():
     parser.add_argument('-o', '--outdir', metavar='DIRECTORY', type=str,
                         default='.', help='output directory')
     parser.add_argument('-e', '--temppert', metavar='TEMPPERT', type=int,
-                        default=0, help='Index of temperature pertubation')
+                        default=0, help='index of temperature pertubation')
     parser.add_argument('-t', '--notex', action='store_true',
                         help='don\'t use TeX rendering')
+    parser.add_argument('--opacity', action='store_true',
+                        default=False, help='plot opacity')
     parser.add_argument('-s', '--show', action='store_true',
                         help='display plots instead of just storing them')
     parser.add_argument('-T', '--title', metavar='TITLE', type=str,
-                        help='Plot title')
+                        help='plot title')
+    parser.add_argument('-P', '--planet', metavar='PLANET', type=str,
+                        default='Earth', help='planet, determines gravity and '
+                                              'gas constant')
     parser.add_argument('-p', '--pressures', metavar='PYTHONLIST', type=str,
-                        help='List of pressures in Pa to plot, '
+                        help='list of pressures in Pa to plot, '
                              'e.g. [1,10,100,1000,10000].\n'
                              'Only used for cross-section plots.')
     parser.add_argument('-V', '--vmrpert', metavar='VMRPERT', type=int,
-                        default=0, help='Index of nonlinear species vmr'
+                        default=0, help='index of nonlinear species vmr'
                                         'pertubation')
     parser.add_argument('--altitudes', '-z', metavar='ALTITUDEPROFILE',
                         type=str, help='ARTS altitude profile XML file')
@@ -62,18 +78,26 @@ def GigaHertzFormatter():
     return _GigaHertzFormatter
 
 
-def get_species_index(lookup, species, vmrpert):
-    speciescount = numpy.zeros_like(lookup.speciestags)
-    speciescount[lookup.nonlinearspecies] = (
-            lookup.nonlinearspeciesvmrpertubations.size - 1)
+def _calc_lookup_species_count(lookup):
+    nlsspecies = lookup.nonlinearspecies
+    speciescount = numpy.ones_like(lookup.speciestags, dtype=int)
+    if nlsspecies is not None:
+        speciescount[nlsspecies] = lookup.nonlinearspeciesvmrpertubations.size
+    return speciescount
+
+
+def _get_lookup_species_index(lookup, species, vmrpert):
+    ret = 0
     spindex = lookup.speciestags.index(species)
-    spindex += numpy.sum(speciescount[0:spindex])
-    if lookup.speciestags.index(species) in lookup.nonlinearspecies:
-        if vmrpert > speciescount[spindex]:
+    nlsspecies = lookup.nonlinearspecies
+    speciescount = _calc_lookup_species_count(lookup)
+    if nlsspecies is not None and spindex in nlsspecies:
+        if vmrpert >= speciescount[spindex]:
             raise RuntimeError(
                 'Nonlinear species VMR pertubation index too large')
-        spindex += vmrpert
-    return spindex
+        ret = vmrpert
+
+    return ret + (numpy.sum(speciescount[0:spindex]) if spindex > 0 else 0)
 
 
 def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None, tpert=0,
@@ -91,7 +115,8 @@ def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None, tpert=0,
                              numpy.linspace(0, 1, len(ipressures))]))
         for pi in ipressures:
             xsec = lookup.absorptioncrosssection[
-                   tpert, get_species_index(lookup, tag, vmrpert), :, pi]
+                   tpert,
+                   _get_lookup_species_index(lookup, tag, vmrpert), :, pi]
             ax.plot(lookup.frequencygrid, xsec)
 
     if len(species) > 1:
@@ -108,7 +133,7 @@ def plot_lookup_xsec(lookup, ipressures=None, species=None, ax=None, tpert=0,
     ax.spines['top'].set_visible(False)
 
 
-def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
+def plot_lookup_opacity(lookup, opacity, species=None, vmrpert=0, ax=None,
                         oneline=False, total=False):
     if ax is None:
         ax = plt.gca()
@@ -119,13 +144,22 @@ def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
 
     for tag in species:
         ax.plot(lookup.frequencygrid,
-                opacity[lookup.speciestags.index(tag), :],
+                opacity[_get_lookup_species_index(lookup, tag, vmrpert), :],
                 label=',\n'.join(tag))
     if oneline:
         ax.plot(lookup.frequencygrid, numpy.ones_like(lookup.frequencygrid),
                 linewidth=1, linestyle='--', color='k')
     if total:
-        ax.plot(lookup.frequencygrid, numpy.sum(opacity, axis=0),
+        if lookup.nonlinearspecies is not None:
+            speciescount = _calc_lookup_species_count(lookup)
+            spindex = numpy.cumsum(speciescount)
+            spindex[1:] = spindex[0:-1]
+            spindex[0] = 0
+            spindex[lookup.nonlinearspecies] += vmrpert
+            o = opacity[spindex]
+        else:
+            o = opacity
+        ax.plot(lookup.frequencygrid, numpy.sum(o, axis=0),
                 linewidth=1, color='k')
 
     if len(species) > 1:
@@ -137,23 +171,36 @@ def plot_lookup_opacity(lookup, opacity, species=None, ax=None,
 
     ax.xaxis.set_major_formatter(GigaHertzFormatter())
     ax.tick_params(axis='both', which='major', labelsize='xx-small')
+    ax.tick_params(axis='both', which='minor', labelsize='xx-small')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
 
 
-def calc_opacity_from_lookup(lookup, z=None, tpert=0):
-    ni = (lookup.pressuregrid * lookup.referencevmrprofiles
+def calc_opacity_from_lookup(lookup, z=None, g=typhon.constants.g,
+                             r=typhon.constants.gas_constant_dry_air, tpert=0):
+    speciescount = _calc_lookup_species_count(lookup)
+    vmrs = (numpy.repeat(lookup.referencevmrprofiles, speciescount, axis=0)
+            if lookup.nonlinearspecies is not None
+            else lookup.referencevmrprofiles)
+
+    ni = (lookup.pressuregrid * vmrs
           / lookup.referencetemperatureprofile / typhon.constants.boltzmann
-          ).reshape(len(lookup.speciestags), 1, len(lookup.pressuregrid))
+          ).reshape(sum(speciescount), 1, len(lookup.pressuregrid))
 
     alpha = ni * lookup.absorptioncrosssection[tpert, :, :, :]
 
     if z is not None:
         z = interp1d(z.grids[0], z.data[:, 0, 0])(lookup.pressuregrid)
     else:
+        # Calculate z from hypsometric formula
         pgrid = lookup.pressuregrid
-        z = ((pgrid[0] / pgrid) ** (1 / 5.257) - 1) * (
-                lookup.referencetemperatureprofile + 273.15) / 0.0065
+        z = [r * t / g * numpy.log(p1 / p2)
+             for p1, p2, t in zip(pgrid[:-1], pgrid[1:], (
+                    lookup.referencetemperatureprofile[
+                    1:] + lookup.referencetemperatureprofile[:-1]) / 2.)]
+        z = numpy.cumsum(z)
+        p = (pgrid[1:] + pgrid[:-1]) / 2.
+        z = interp1d(p, z, fill_value='extrapolate')(lookup.pressuregrid)
 
     return numpy.vstack(numpy.trapz(ialpha, z, axis=1) for ialpha in alpha)
 
@@ -196,7 +243,7 @@ def main():
     args = parse_args()
 
     outdir = args.outdir
-    do_opacity = args.altitudes is not None
+    do_opacity = args.opacity
     os.makedirs(outdir, exist_ok=True)
 
     plt.rc('text', usetex=not args.notex)
@@ -207,7 +254,12 @@ def main():
     lookup = typhon.arts.xml.load(args.lookup)
     if do_opacity:
         opacity = calc_opacity_from_lookup(lookup,
-                                           typhon.arts.xml.load(args.altitudes))
+                                           typhon.arts.xml.load(args.altitudes)
+                                           if args.altitudes is not None
+                                           else None,
+                                           g=PLANETS_G[args.planet],
+                                           r=PLANETS_R[args.planet],
+                                           tpert=args.temppert)
     cols = 3
     rows = int(numpy.ceil(len(lookup.speciestags) / cols))
     fig, ax = plt.subplots(rows + 1, cols, figsize=(10, (rows + 1) * 2))
@@ -216,8 +268,9 @@ def main():
     # plot_abs_lookup(lookup, ['PH3-*-*-*'])
     for cax, species in zip(ax[1:, :].flatten(), lookup.speciestags):
         if do_opacity:
-            plot_lookup_opacity(lookup, opacity, oneline=True, total=True,
-                                species=[species], ax=cax, tpert=args.temppert)
+            plot_lookup_opacity(lookup, opacity, vmrpert=args.vmrpert,
+                                oneline=True, total=True, species=[species],
+                                ax=cax)
         else:
             psize = lookup.pressuregrid.size
             if args.pressures is not None:
@@ -257,6 +310,8 @@ def main():
 
     if args.title is not None:
         fig.suptitle(args.title)
+    else:
+        fig.suptitle(args.planet)
 
     print(f'Saving {filename}')
     fig.savefig(filename, bbox='tight', dpi=300)
